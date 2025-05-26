@@ -30,7 +30,7 @@ class Push
 
     public function setPusher($gateway)
     {
-        $this->gatewayConfig = $this->config->get($gateway);
+        $this->gatewayConfig = $this->config->get($this->formatGatewayName($gateway));
         $this->gateway = $this->createGateway($gateway);
     }
 
@@ -91,11 +91,8 @@ class Push
         return call_user_func($this->customGateways[$name], $this->gatewayConfig);
     }
 
-    protected function formatGatewayClassName($name)
+    protected function formatGatewayName($name)
     {
-        if (class_exists($name)) {
-            return $name;
-        }
         if ('apple' == strtolower($name) || 'ios' == strtolower($name)) {
             $name = 'ios-token';
         } elseif ('apple-token' == strtolower($name)) {
@@ -103,10 +100,19 @@ class Push
         } elseif ('huawei' == strtolower($name)) {
             $name = 'huawei-v2';
         }
+        return $name;
+    }
+
+    protected function formatGatewayClassName($name)
+    {
+        if (class_exists($name)) {
+            return $name;
+        }
+        $name = $this->formatGatewayName($name);
         $nameArr = preg_split("/(\-|_| )/", $name);
         $gateway = implode('', array_map('ucfirst', $nameArr));
 
-        return __NAMESPACE__."\\Gateways\\{$gateway}Gateway";
+        return __NAMESPACE__ . "\\Gateways\\{$gateway}Gateway";
     }
 
     protected function makeGateway($gateway)
