@@ -17,9 +17,9 @@
   "require": {
     "guzzlehttp/guzzle": ">=6.0.0",
     "php": ">=8.0",
-    "yunchuang/php-jwt": "^1.0",
     "gepo/apns-http2": "^0.1.0",
-    "ext-openssl": "*"
+    "ext-openssl": "*",
+    "firebase/php-jwt": "^6.11"
   },
   "autoload": {
     "psr-4": {
