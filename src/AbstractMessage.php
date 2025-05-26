@@ -1,9 +1,9 @@
 <?php
 
-namespace MingYuanYun\Push;
+namespace BetterUs\Push;
 
 
-use MingYuanYun\Push\Contracts\MessageInterface;
+use BetterUs\Push\Contracts\MessageInterface;
 
 abstract class AbstractMessage implements MessageInterface
 {

@@ -1,10 +1,10 @@
 <?php
 
 
-namespace MingYuanYun\Push\Contracts;
+namespace BetterUs\Push\Contracts;
 
 
-use MingYuanYun\Push\AbstractMessage;
+use BetterUs\Push\AbstractMessage;
 
 
 interface GatewayInterface

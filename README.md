@@ -1,4 +1,4 @@
-# MingYuanYun Push Library
+# BetterUs Push Library
 
 
 
@@ -35,7 +35,7 @@ composer require yunchuang/push
 ## 使用
 
 ```php
-use MingYuanYun\Push\Push;
+use BetterUs\Push\Push;
 
 $iosCertContent =<<<EOF
 -----BEGIN PRIVATE KEY-----
@@ -327,18 +327,18 @@ print $push->pushNotice(
 
 调用过程中有可能抛出以下异常，请注意捕获。
 
-- `MingYuanYun\Push\Exceptions\GatewayErrorException`
-- `MingYuanYun\Push\Exceptions\InvalidArgumentException`
-- `MingYuanYun\Push\Exceptions\ResponseException`
+- `BetterUs\Push\Exceptions\GatewayErrorException`
+- `BetterUs\Push\Exceptions\InvalidArgumentException`
+- `BetterUs\Push\Exceptions\ResponseException`
 
-也可捕获上述异常的父类`MingYuanYun\Push\Exceptions\Exception`
+也可捕获上述异常的父类`BetterUs\Push\Exceptions\Exception`
 
 ## 自定义通道
 
 本扩展支持自定义通道。
 
 ```php
-use MingYuanYun\Push\Gateways\Gateway;
+use BetterUs\Push\Gateways\Gateway;
 
 class MyGateway extends Gateway
 {
@@ -440,6 +440,51 @@ print $push->pushNotice(
 ---
 
 ## [推送限额说明](/docs/push_limit.md)
+
+---
+
+## [OPPO国际推送支持](/docs/oppo_international_push.md)
+
+OPPO推送现已支持国际推送功能，可以自动根据设备的RegistrationID格式判断设备区域，并选择对应的API端点进行推送。
+
+**主要特性：**
+- 自动区域判断：根据RegistrationID格式自动识别国内/海外设备
+- 智能端点选择：自动选择国内或海外API端点
+- 混合设备支持：支持同时推送到国内和海外设备
+- 向后兼容：现有代码无需修改
+
+详细使用方法请参考：[OPPO国际推送文档](/docs/oppo_international_push.md)
+
+---
+
+## [华为推送v2接口优化](/docs/huawei_push_guide.md)
+
+华为推送现已优化支持v2接口，提供按regId(token)推送和回调解析功能，支持完整的推送状态追踪。
+
+**主要特性：**
+- v2接口：使用华为推送v2接口，性能更优
+- regId推送：支持单个和批量regId(token)推送
+- 自动回调：自动设置回调地址为 `open.example.com/push/callback/huawei`
+- 回调解析：提供完整的回调数据解析功能
+- 状态追踪：支持送达、点击、无效token、已发送等状态追踪
+
+详细使用方法请参考：[华为推送使用指南](/docs/huawei_push_guide.md)
+
+---
+
+## [iOS推送优化支持](/docs/ios_push_guide.md)
+
+iOS推送现已优化支持最新的APNs协议，提供按regId/token推送和回调解析功能，支持完整的推送状态追踪。
+
+**主要特性：**
+- 双重认证方式：支持JWT token认证和推送证书认证
+- HTTP/2协议：使用最新的HTTP/2协议，性能更优
+- regId推送：支持单个和批量设备token推送
+- LiveKit支持：支持LiveCommunicationKit实时通信消息
+- 回调解析：提供完整的回调数据解析功能
+- 严格验证：严格验证设备token格式（64位十六进制）
+
+详细使用方法请参考：[iOS推送使用指南](/docs/ios_push_guide.md)
 
 ---
 

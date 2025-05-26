@@ -1,7 +1,7 @@
 <?php
 
 
-namespace MingYuanYun\Push;
+namespace BetterUs\Push;
 
 
 class ApnsMessage extends \Apns\Message

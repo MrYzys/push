@@ -1,7 +1,7 @@
 <?php
 
 
-namespace MingYuanYun\Push\Support;
+namespace BetterUs\Push\Support;
 
 
 /**

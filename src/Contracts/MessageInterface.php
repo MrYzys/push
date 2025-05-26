@@ -1,7 +1,7 @@
 <?php
 
 
-namespace MingYuanYun\Push\Contracts;
+namespace BetterUs\Push\Contracts;
 
 
 interface MessageInterface

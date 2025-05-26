@@ -1,11 +1,11 @@
 <?php
 
 
-namespace MingYuanYun\Push;
+namespace BetterUs\Push;
 
 
 
-use MingYuanYun\Push\Support\ArrayHelper;
+use BetterUs\Push\Support\ArrayHelper;
 
 class Message extends AbstractMessage
 {

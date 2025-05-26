@@ -1,12 +1,12 @@
 <?php
 
 
-namespace MingYuanYun\Push\Gateways;
+namespace BetterUs\Push\Gateways;
 
 
-use MingYuanYun\Push\AbstractMessage;
-use MingYuanYun\Push\Exceptions\GatewayErrorException;
-use MingYuanYun\Push\Traits\HasHttpRequest;
+use BetterUs\Push\AbstractMessage;
+use BetterUs\Push\Exceptions\GatewayErrorException;
+use BetterUs\Push\Traits\HasHttpRequest;
 
 class VivoGateway extends Gateway
 {
@@ -88,14 +88,8 @@ class VivoGateway extends Gateway
             'requestId' => $message->businessId,
             'notifyType' => 1,
         ];
-        if ($message->callback) {
-            $data['extra'] = [
-                'callback' => $message->callback
-            ];
-            if ($message->callbackParam) {
-                $data['extra']['callback.param'] = $message->callbackParam;
-            }
-        }
+        // 设置回调地址
+        $this->setCallbackUrl($data, $message);
         $data = $this->mergeGatewayOptions($data, $message->gatewayOptions);
         $result = $this->postJson(
             sprintf('%s/%s', self::BASE_URL, self::SINGLE_PUSH_METHOD),
@@ -134,14 +128,8 @@ class VivoGateway extends Gateway
             'requestId' => $message->businessId,
             'notifyType' => 1
         ];
-        if ($message->callback) {
-            $data['extra'] = [
-                'callback' => $message->callback
-            ];
-            if ($message->callbackParam) {
-                $data['extra']['callback.param'] = $message->callbackParam;
-            }
-        }
+        // 设置回调地址
+        $this->setCallbackUrl($data, $message);
         $data = $this->mergeGatewayOptions($data, $message->gatewayOptions);
         $result = $this->postJson(
             sprintf('%s/%s', self::BASE_URL, self::SAVE_MESSAGE_METHOD),
@@ -177,6 +165,85 @@ class VivoGateway extends Gateway
             $this->checkMaxToken($to);
         }
         return $to;
+    }
+
+    /**
+     * 设置回调URL
+     *
+     * @param array $data
+     * @param AbstractMessage $message
+     */
+    protected function setCallbackUrl(array &$data, AbstractMessage $message)
+    {
+        // 优先使用消息中设置的回调地址
+        if ($message->callback) {
+            $data['extra'] = [
+                'callback' => $message->callback
+            ];
+            if ($message->callbackParam) {
+                $data['extra']['callback.param'] = $message->callbackParam;
+            }
+        } else {
+            // 使用默认回调地址
+            $data['extra'] = [
+                'callback' => 'https://open.example.com/push/callback/vivo'
+            ];
+        }
+    }
+
+    /**
+     * 解析vivo推送回调数据
+     *
+     * @param array $callbackData 回调数据
+     * @return array 解析后的数据
+     */
+    public function parseCallback(array $callbackData)
+    {
+        $result = [
+            'gateway' => 'vivo',
+            'message_id' => null,
+            'registration_ids' => [],
+            'event_type' => null,
+            'timestamp' => null,
+            'raw_data' => $callbackData
+        ];
+
+        // 解析消息ID
+        if (isset($callbackData['taskId'])) {
+            $result['message_id'] = $callbackData['taskId'];
+        }
+
+        // 解析设备regId列表
+        if (isset($callbackData['regId'])) {
+            $result['registration_ids'] = is_array($callbackData['regId'])
+                ? $callbackData['regId']
+                : [$callbackData['regId']];
+        }
+
+        // 解析事件类型
+        if (isset($callbackData['eventType'])) {
+            switch ($callbackData['eventType']) {
+                case 1:
+                    $result['event_type'] = 'delivered'; // 送达
+                    break;
+                case 2:
+                    $result['event_type'] = 'clicked'; // 点击
+                    break;
+                case 3:
+                    $result['event_type'] = 'invalid_regid'; // 无效regId
+                    break;
+                default:
+                    $result['event_type'] = 'unknown';
+                    break;
+            }
+        }
+
+        // 解析时间戳
+        if (isset($callbackData['timestamp'])) {
+            $result['timestamp'] = $callbackData['timestamp'];
+        }
+
+        return $result;
     }
 
     protected function assertFailure($result, $message)

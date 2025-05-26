@@ -1,7 +1,7 @@
 <?php
 
 
-namespace MingYuanYun\Push\Exceptions;
+namespace BetterUs\Push\Exceptions;
 
 
 class GatewayErrorException extends Exception

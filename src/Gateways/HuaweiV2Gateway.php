@@ -1,11 +1,11 @@
 <?php
 
-namespace MingYuanYun\Push\Gateways;
+namespace BetterUs\Push\Gateways;
 
 
-use MingYuanYun\Push\AbstractMessage;
-use MingYuanYun\Push\Exceptions\GatewayErrorException;
-use MingYuanYun\Push\Traits\HasHttpRequest;
+use BetterUs\Push\AbstractMessage;
+use BetterUs\Push\Exceptions\GatewayErrorException;
+use BetterUs\Push\Traits\HasHttpRequest;
 
 class HuaweiV2Gateway extends Gateway
 {
@@ -52,6 +52,9 @@ class HuaweiV2Gateway extends Gateway
                 ]
             ]
         ];
+
+        // 设置回调地址
+        $this->setCallbackUrl($androidConfig, $message);
         if ($message->badge) {
             if (preg_match('/^\d+$/', $message->badge)) {
                 $androidConfig['notification']['badge'] = [
@@ -117,6 +120,84 @@ class HuaweiV2Gateway extends Gateway
     protected function buildPushUrl()
     {
         return sprintf(self::PUSH_URL, $this->config->get('clientId'));
+    }
+
+    /**
+     * 设置回调URL
+     *
+     * @param array $androidConfig
+     * @param AbstractMessage $message
+     */
+    protected function setCallbackUrl(array &$androidConfig, AbstractMessage $message)
+    {
+        // 优先使用消息中设置的回调地址
+        if ($message->callback) {
+            $androidConfig['receipt_id'] = $message->callback;
+            if ($message->callbackParam) {
+                $androidConfig['callback_param'] = $message->callbackParam;
+            }
+        } else {
+            // 使用默认回调地址
+            $androidConfig['receipt_id'] = 'https://open.example.com/push/callback/huawei';
+        }
+    }
+
+    /**
+     * 解析华为推送回调数据
+     *
+     * @param array $callbackData 回调数据
+     * @return array 解析后的数据
+     */
+    public function parseCallback(array $callbackData)
+    {
+        $result = [
+            'gateway' => 'huawei-v2',
+            'message_id' => null,
+            'registration_ids' => [],
+            'event_type' => null,
+            'timestamp' => null,
+            'raw_data' => $callbackData
+        ];
+
+        // 解析消息ID
+        if (isset($callbackData['requestId'])) {
+            $result['message_id'] = $callbackData['requestId'];
+        }
+
+        // 解析设备token列表
+        if (isset($callbackData['token'])) {
+            $result['registration_ids'] = is_array($callbackData['token'])
+                ? $callbackData['token']
+                : [$callbackData['token']];
+        }
+
+        // 解析事件类型
+        if (isset($callbackData['eventType'])) {
+            switch ($callbackData['eventType']) {
+                case 1:
+                    $result['event_type'] = 'delivered'; // 送达
+                    break;
+                case 2:
+                    $result['event_type'] = 'clicked'; // 点击
+                    break;
+                case 3:
+                    $result['event_type'] = 'invalid_token'; // 无效token
+                    break;
+                case 10:
+                    $result['event_type'] = 'sent'; // 已发送
+                    break;
+                default:
+                    $result['event_type'] = 'unknown';
+                    break;
+            }
+        }
+
+        // 解析时间戳
+        if (isset($callbackData['timestamp'])) {
+            $result['timestamp'] = $callbackData['timestamp'];
+        }
+
+        return $result;
     }
 
     protected function formatTo($to)

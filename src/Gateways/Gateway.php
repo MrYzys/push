@@ -1,12 +1,12 @@
 <?php
 
 
-namespace MingYuanYun\Push\Gateways;
+namespace BetterUs\Push\Gateways;
 
-use MingYuanYun\Push\Contracts\GatewayInterface;
-use MingYuanYun\Push\Exceptions\InvalidArgumentException;
-use MingYuanYun\Push\Support\Config;
-use MingYuanYun\Push\Support\ArrayHelper;
+use BetterUs\Push\Contracts\GatewayInterface;
+use BetterUs\Push\Exceptions\InvalidArgumentException;
+use BetterUs\Push\Support\Config;
+use BetterUs\Push\Support\ArrayHelper;
 
 
 abstract class Gateway implements GatewayInterface
@@ -59,7 +59,7 @@ abstract class Gateway implements GatewayInterface
     }
 
     /**
-     * @return \MingYuanYun\Push\Support\Config
+     * @return \BetterUs\Push\Support\Config
      */
     public function getConfig()
     {
@@ -67,7 +67,7 @@ abstract class Gateway implements GatewayInterface
     }
 
     /**
-     * @param \MingYuanYun\Push\Support\Config $config
+     * @param \BetterUs\Push\Support\Config $config
      *
      * @return $this
      */

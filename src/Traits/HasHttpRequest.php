@@ -1,11 +1,11 @@
 <?php
 
 
-namespace MingYuanYun\Push\Traits;
+namespace BetterUs\Push\Traits;
 
 
 use GuzzleHttp\Client;
-use MingYuanYun\Push\Exceptions\ResponseException;
+use BetterUs\Push\Exceptions\ResponseException;
 use Psr\Http\Message\ResponseInterface;
 
 /**

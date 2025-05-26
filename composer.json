@@ -1,24 +1,29 @@
 {
-    "name": "yunchuang/push",
-    "description": "App push for mingyuanyun",
-    "type": "library",
-    "keywords": ["push", "mingyuanyun", "android push"],
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "zengbin",
-            "email": "zengb02@mingyuanyun.com"
-        }
-    ],
-    "require": {
-        "guzzlehttp/guzzle": ">=6.0.0",
-        "php": ">=5.4",
-        "yunchuang/php-jwt": "^1.0",
-        "gepo/apns-http2": "^0.1.0"
-    },
-    "autoload": {
-        "psr-4": {
-            "MingYuanYun\\Push\\": "src/"
-        }
+  "name": "betterus/push",
+  "description": "App push for BetterUs",
+  "type": "library",
+  "keywords": [
+    "push",
+    "BetterUs",
+    "android push"
+  ],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "hechuan",
+      "email": "hechuan@BetterUs.cc"
     }
+  ],
+  "require": {
+    "guzzlehttp/guzzle": ">=6.0.0",
+    "php": ">=8.0",
+    "yunchuang/php-jwt": "^1.0",
+    "gepo/apns-http2": "^0.1.0",
+    "ext-openssl": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "BetterUs\\Push\\": "src/"
+    }
+  }
 }

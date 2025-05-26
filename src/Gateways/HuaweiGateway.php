@@ -1,11 +1,11 @@
 <?php
 
-namespace MingYuanYun\Push\Gateways;
+namespace BetterUs\Push\Gateways;
 
 
-use MingYuanYun\Push\AbstractMessage;
-use MingYuanYun\Push\Exceptions\GatewayErrorException;
-use MingYuanYun\Push\Traits\HasHttpRequest;
+use BetterUs\Push\AbstractMessage;
+use BetterUs\Push\Exceptions\GatewayErrorException;
+use BetterUs\Push\Traits\HasHttpRequest;
 
 class HuaweiGateway extends Gateway
 {

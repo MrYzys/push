@@ -1,14 +1,14 @@
 <?php
 
-namespace MingYuanYun\Push;
+namespace BetterUs\Push;
 
 
 use Closure;
-use MingYuanYun\Push\Contracts\GatewayInterface;
-use MingYuanYun\Push\Exceptions\GatewayErrorException;
-use MingYuanYun\Push\Exceptions\InvalidArgumentException;
-use MingYuanYun\Push\Gateways\Gateway;
-use MingYuanYun\Push\Support\Config;
+use BetterUs\Push\Contracts\GatewayInterface;
+use BetterUs\Push\Exceptions\GatewayErrorException;
+use BetterUs\Push\Exceptions\InvalidArgumentException;
+use BetterUs\Push\Gateways\Gateway;
+use BetterUs\Push\Support\Config;
 
 class Push
 {
