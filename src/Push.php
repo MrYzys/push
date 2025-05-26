@@ -96,10 +96,12 @@ class Push
         if (class_exists($name)) {
             return $name;
         }
-        if ('apple' == strtolower($name)) {
-            $name = 'ios';
+        if ('apple' == strtolower($name) || 'ios' == strtolower($name)) {
+            $name = 'ios-token';
         } elseif ('apple-token' == strtolower($name)) {
             $name = 'ios-token';
+        } elseif ('huawei' == strtolower($name)) {
+            $name = 'huawei-v2';
         }
         $nameArr = preg_split("/(\-|_| )/", $name);
         $gateway = implode('', array_map('ucfirst', $nameArr));

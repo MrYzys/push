@@ -320,10 +320,11 @@ try {
 
 ### 1. 系统要求
 
-- **PHP版本**: >= 7.0
+- **PHP版本**: >= 8.0
 - **cURL版本**: >= 7.54.0 (支持HTTP/2)
 - **OpenSSL版本**: >= 1.0.2s
 - **扩展要求**: curl, openssl, json
+- **推送库**: edamov/pushok (替代gepo/apns-http2)
 
 ### 2. 苹果开发者要求
 
@@ -434,6 +435,13 @@ echo "OK";
 ```
 
 ## 更新日志
+
+- **v2.x.x**：重大更新 - 替换推送库
+  - 将gepo/apns-http2替换为edamov/pushok
+  - 移除firebase/php-jwt依赖（pushok内置JWT支持）
+  - 改进错误处理和响应解析
+  - 保持API向后兼容性
+  - 支持最新的APNs特性
 
 - **v1.x.x**：优化iOS推送功能
   - 添加回调数据解析功能

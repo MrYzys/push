@@ -3,12 +3,14 @@
 namespace BetterUs\Push\Gateways;
 
 
-use Firebase\JWT\JWT;
-use GuzzleHttp\Client;
-use GuzzleHttp\Pool;
-use GuzzleHttp\Psr7\Request;
+use Pushok\AuthProvider\Token;
+use Pushok\Client;
+use Pushok\Notification;
+use Pushok\Payload;
+use Pushok\Payload\Alert;
 use BetterUs\Push\AbstractMessage;
 use BetterUs\Push\Exceptions\InvalidArgumentException;
+use BetterUs\Push\Exceptions\GatewayErrorException;
 use BetterUs\Push\Support\ArrayHelper;
 
 class IosTokenGateway extends Gateway
@@ -23,25 +25,19 @@ class IosTokenGateway extends Gateway
 
     public function getAuthToken()
     {
-        $token = $this->generateJwt();
-        return [
-            'token' => $token,
-            'expires' => strtotime('+ 50 minutes') - time()
-        ];
+        // pushok内置JWT支持，不需要手动生成token
+        return null;
     }
 
-    protected function generateJwt()
+    /**
+     * 创建pushok认证提供者
+     *
+     * @return Token
+     */
+    protected function createAuthProvider()
     {
-        $payload = [
-            'iss' => $this->config->get('teamId'),
-            'iat' => time()
-        ];
-        $header = [
-            'alg' => static::ALGORITHM,
-            'kid' => $this->config->get('keyId')
-        ];
         $secretContent = $this->config->get('secretContent');
-        if (! $secretContent) {
+        if (!$secretContent) {
             $secretFile = $this->config->get('secretFile');
             if (!file_exists($secretFile)) {
                 throw new InvalidArgumentException('无效的推送密钥证书地址 > ' . $secretFile);
@@ -49,7 +45,12 @@ class IosTokenGateway extends Gateway
             $secretContent = file_get_contents($secretFile);
         }
 
-        return JWT::encode($payload, $secretContent, static::ALGORITHM, null, $header);
+        return Token::create([
+            'key_id' => $this->config->get('keyId'),
+            'team_id' => $this->config->get('teamId'),
+            'app_bundle_id' => $this->config->get('bundleId'),
+            'private_key_content' => $secretContent,
+        ]);
     }
 
     public function pushNotice($to, AbstractMessage $message, array $options = [])
@@ -59,35 +60,28 @@ class IosTokenGateway extends Gateway
             throw new InvalidArgumentException('无有效的设备token');
         }
 
-        if (isset($options['token'])) {
-            $token = $options['token'];
-            unset($options['token']);
-        } else {
-            $tokenInfo = $this->getAuthToken();
-            $token = $tokenInfo['token'];
-        }
+        try {
+            // 创建认证提供者
+            $authProvider = $this->createAuthProvider();
 
-        $header = [
-            'authorization' => sprintf('bearer %s', $token),
-            'apns-topic' => $this->getApnsTopic($message),
-            'content-type' => 'application/json',
-        ];
+            // 创建客户端
+            $client = new Client($authProvider, !$this->config->get('isSandBox', false));
 
-        // 设置推送类型和优先级
-        $this->setApnsHeaders($header, $message);
-
-        !is_null($message->businessId) && $header['apns-id'] = $message->businessId;
-        !is_null($message->notifyId) && $header['apns-collapse-id'] = $message->notifyId;
-        $payload = $this->createPayload($message);
-
-        $callback = [];
-        if ($message->callback) {
-            $callback['url'] = $message->callback;
-            if ($message->callbackParam) {
-                $callback['params'] = $message->callbackParam;
+            // 创建通知
+            foreach ($to as $deviceToken) {
+                $notification = $this->createNotification($deviceToken, $message);
+                $client->addNotification($notification);
             }
+
+            // 发送推送
+            $responses = $client->push();
+
+            // 处理回调
+            $this->handlePushResponses($responses, $message);
+
+        } catch (\Exception $e) {
+            throw new GatewayErrorException('iOS推送失败: ' . $e->getMessage());
         }
-        $this->_push($to, $payload, $header, $callback);
     }
 
     /**
@@ -107,21 +101,80 @@ class IosTokenGateway extends Gateway
     }
 
     /**
-     * 设置APNs头部信息
+     * 创建pushok通知对象
      *
-     * @param array $header
+     * @param string $deviceToken
+     * @param AbstractMessage $message
+     * @return Notification
+     */
+    protected function createNotification($deviceToken, AbstractMessage $message)
+    {
+        // 创建payload
+        $payload = $this->createPushokPayload($message);
+
+        // 设置推送类型
+        if ($this->isLiveKitMessage($message)) {
+            $payload->setPushType('voip');
+        } else {
+            $payload->setPushType('alert');
+        }
+
+        // 创建通知
+        $notification = new Notification($payload, $deviceToken);
+
+        // 设置优先级
+        if ($this->isLiveKitMessage($message)) {
+            $notification->setHighPriority();
+        } else {
+            $notification->setLowPriority();
+        }
+
+        // 设置其他属性
+        if ($message->businessId) {
+            $notification->setId($message->businessId);
+        }
+
+        if ($message->notifyId) {
+            $notification->setCollapseId($message->notifyId);
+        }
+
+        return $notification;
+    }
+
+    /**
+     * 处理推送响应
+     *
+     * @param array $responses
      * @param AbstractMessage $message
      */
-    protected function setApnsHeaders(array &$header, AbstractMessage $message)
+    protected function handlePushResponses($responses, AbstractMessage $message)
     {
-        if ($this->isLiveKitMessage($message)) {
-            // LiveKit消息使用高优先级
-            $header['apns-priority'] = '10';
-            $header['apns-push-type'] = 'voip';
-        } else {
-            // 普通消息使用标准优先级
-            $header['apns-priority'] = '5';
-            $header['apns-push-type'] = 'alert';
+        $errors = [];
+
+        foreach ($responses as $response) {
+            if (!$response->isSuccessful()) {
+                $errors[$response->getDeviceToken()] = $response->getErrorReason();
+            }
+
+            // 处理回调
+            if ($message->callback) {
+                $callbackData = [
+                    'deviceToken' => $response->getDeviceToken(),
+                    'status' => $response->isSuccessful() ? 'success' : 'fail',
+                    'taskId' => $response->getApnsId(),
+                    'timestamp' => time()
+                ];
+
+                if (!$response->isSuccessful()) {
+                    $callbackData['reason'] = $response->getErrorReason();
+                }
+
+                $this->notifyCallback($message->callback, $callbackData, $message->callbackParam);
+            }
+        }
+
+        if (!empty($errors)) {
+            throw new GatewayErrorException('部分设备推送失败: ' . json_encode($errors));
         }
     }
 
@@ -150,152 +203,159 @@ class IosTokenGateway extends Gateway
         return false;
     }
 
-    protected function createPayload(AbstractMessage $message)
+    /**
+     * 创建pushok Payload对象
+     *
+     * @param AbstractMessage $message
+     * @return Payload
+     */
+    protected function createPushokPayload(AbstractMessage $message)
     {
         if ($this->isLiveKitMessage($message)) {
-            return $this->createLiveKitPayload($message);
+            return $this->createLiveKitPushokPayload($message);
         }
 
-        $payload = [
-            'aps' => [
-                'alert' => [
-                    'title' => $message->title,
-                    'subtitle' => $message->subTitle ? $message->subTitle : '',
-                    'body' => $message->content,
-                ],
-                'sound' => 'default',
-                'badge' => $message->badge ? intval($message->badge) : 0,
-            ],
-        ];
+        // 创建普通payload
+        $payload = Payload::create();
+
+        // 设置alert
+        $alert = Alert::create()
+            ->setTitle($message->title)
+            ->setBody($message->content);
+
+        if ($message->subTitle) {
+            $alert->setSubtitle($message->subTitle);
+        }
+
+        $payload->setAlert($alert);
+
+        // 设置其他属性
+        if ($message->badge) {
+            $payload->setBadge(intval($message->badge));
+        }
+
+        $payload->setSound('default');
+
+        // 添加自定义数据
         if ($message->extra && is_array($message->extra)) {
-            $payload = array_merge($payload, $message->extra);
+            foreach ($message->extra as $key => $value) {
+                $payload->setCustomValue($key, $value);
+            }
         }
-        $payload = $this->mergeGatewayOptions($payload, $message->gatewayOptions);
-        if (ArrayHelper::getValue($payload, 'aps.mutable-content') == 1) {
-            unset($payload['aps']['sound']);
+
+        // 合并网关选项
+        if ($message->gatewayOptions && is_array($message->gatewayOptions)) {
+            $iosOptions = ArrayHelper::getValue($message->gatewayOptions, 'ios', []);
+            if (isset($iosOptions['aps'])) {
+                foreach ($iosOptions['aps'] as $key => $value) {
+                    switch ($key) {
+                        case 'mutable-content':
+                            $payload->setMutableContent($value == 1);
+                            if ($value == 1) {
+                                $payload->setSound(null); // 移除声音
+                            }
+                            break;
+                        case 'content-available':
+                            $payload->setContentAvailability($value == 1);
+                            break;
+                        case 'category':
+                            $payload->setCategory($value);
+                            break;
+                        case 'thread-id':
+                            $payload->setThreadId($value);
+                            break;
+                    }
+                }
+            }
+
+            // 添加其他自定义字段
+            foreach ($iosOptions as $key => $value) {
+                if ($key !== 'aps') {
+                    $payload->setCustomValue($key, $value);
+                }
+            }
         }
-        return json_encode($payload);
+
+        return $payload;
     }
 
     /**
-     * 创建LiveKit专用的payload
+     * 创建LiveKit专用的pushok Payload
      *
      * @param AbstractMessage $message
-     * @return string
+     * @return Payload
      */
-    protected function createLiveKitPayload(AbstractMessage $message)
+    protected function createLiveKitPushokPayload(AbstractMessage $message)
     {
-        $payload = [
-            'aps' => [
-                'content-available' => 1,
-            ],
-            'livekit' => [
-                'room_name' => $message->extra['room_name'] ?? '',
-                'caller_id' => $message->extra['caller_id'] ?? '',
-                'call_type' => $message->extra['call_type'] ?? 'voice',
-                'timestamp' => time(),
-            ]
-        ];
+        $payload = Payload::create();
 
-        // 添加标题和内容（用于显示通知）
+        // 设置content-available
+        $payload->setContentAvailability(true);
+
+        // 添加alert（用于显示通知）
         if ($message->title || $message->content) {
-            $payload['aps']['alert'] = [
-                'title' => $message->title ?: 'Incoming Call',
-                'body' => $message->content ?: 'You have an incoming call',
-            ];
+            $alert = Alert::create()
+                ->setTitle($message->title ?: 'Incoming Call')
+                ->setBody($message->content ?: 'You have an incoming call');
+            $payload->setAlert($alert);
         }
+
+        // 添加LiveKit数据
+        $livekitData = [
+            'room_name' => $message->extra['room_name'] ?? '',
+            'caller_id' => $message->extra['caller_id'] ?? '',
+            'call_type' => $message->extra['call_type'] ?? 'voice',
+            'timestamp' => time(),
+        ];
 
         // 合并额外的LiveKit参数
         if ($message->extra && is_array($message->extra)) {
             foreach ($message->extra as $key => $value) {
                 if (strpos($key, 'livekit_') === 0) {
                     $livekitKey = substr($key, 8); // 移除 'livekit_' 前缀
-                    $payload['livekit'][$livekitKey] = $value;
+                    $livekitData[$livekitKey] = $value;
                 }
             }
         }
+
+        $payload->setCustomValue('livekit', $livekitData);
 
         // 合并网关选项
-        $payload = $this->mergeGatewayOptions($payload, $message->gatewayOptions);
-
-        return json_encode($payload);
-    }
-
-    private function getPushUrl()
-    {
-        $isSandBox = $this->config->get('isSandBox');
-        if ($isSandBox) {
-            return 'https://api.sandbox.push.apple.com/3/device/';
-        } else {
-            return 'https://api.push.apple.com/3/device/';
-        }
-    }
-
-    protected function _push($deviceTokens, $payload, $header, $callback = [])
-    {
-        $client = new Client();
-
-        $requests = function ($deviceTokens, $payload, $header) {
-            $baseUrl = $this->getPushUrl();
-            foreach ($deviceTokens as $deviceToken) {
-                yield new Request(
-                    'POST',
-                    $baseUrl . $deviceToken,
-                    $header,
-                    $payload,
-                    2.0
-                );
-            }
-        };
-
-        $pool = new Pool($client, $requests($deviceTokens, $payload, $header), [
-            'concurrency' => 5,
-            'fulfilled' => function ($response, $index) use ($deviceTokens, $callback, $payload) {
-                $apnsIds = $response->getHeader('apns-id');
-                $apnsId = array_pop($apnsIds);
-                $deviceToken = $deviceTokens[$index];
-                $result = [
-                    'deviceToken' => $deviceToken,
-                    'status' => 'success',
-                    'taskId' => $apnsId
-                ];
-                $this->notifyCallback($callback, $result, $payload);
-            },
-            'rejected' => function ($reason, $index) use ($deviceTokens, $callback, $payload) {
-                $errorMsg = $reason->getMessage();
-                $deviceToken = $deviceTokens[$index];
-                if (preg_match_all('/(\d{3} [^`]+).*"reason":"(.+)"/is', $errorMsg, $matches)) {
-                    $msg = sprintf('%s for %s', $matches[1][0], $matches[2][0]);
-                } else {
-                    $msg = $errorMsg;
+        if ($message->gatewayOptions && is_array($message->gatewayOptions)) {
+            $iosOptions = ArrayHelper::getValue($message->gatewayOptions, 'ios', []);
+            foreach ($iosOptions as $key => $value) {
+                if ($key !== 'aps' && $key !== 'livekit') {
+                    $payload->setCustomValue($key, $value);
                 }
-                $result = [
-                    'deviceToken' => $deviceToken,
-                    'status' => 'fail',
-                    'reason' => $msg
-                ];
-                $this->notifyCallback($callback, $result, $payload);
-            },
-        ]);
+            }
+        }
 
-        $promise = $pool->promise();
-        $promise->wait();
+        return $payload;
     }
 
-    protected function notifyCallback($callback, $data, $payload)
+    /**
+     * 处理回调通知
+     *
+     * @param string $callbackUrl
+     * @param array $data
+     * @param string $callbackParam
+     */
+    protected function notifyCallback($callbackUrl, $data, $callbackParam = null)
     {
-        if (!$callback) {
+        if (!$callbackUrl) {
             return;
         }
-        if (isset($callback['params'])) {
-            $data['params'] = $callback['params'];
-        }
-        $payload = json_decode($payload, true);
-        $data['businessId'] = $payload['aps']['alert']['apns-collapse-id'];
 
-        $client = new Client();
-        $promise = $client->postAsync($callback['url'], ['json' => $data]);
-        $promise->wait();
+        if ($callbackParam) {
+            $data['params'] = $callbackParam;
+        }
+
+        try {
+            $client = new \GuzzleHttp\Client();
+            $client->postAsync($callbackUrl, ['json' => $data])->wait();
+        } catch (\Exception $e) {
+            // 忽略回调错误，不影响主流程
+        }
     }
 
     /**

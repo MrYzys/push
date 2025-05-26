@@ -19,9 +19,9 @@
 
 ## 环境需求
 
-- PHP >= 5.4
+- PHP >= 8.0
 - guzzlehttp/guzzle >= 6.0.0
-- yunchuang/php-jwt >= 1.0
+- edamov/pushok >= 0.15.0
 
 ## 安装
 
@@ -104,14 +104,12 @@ $push->pushNotice(设备token, 推送内容, 附加信息);
 
 目前支持以下通道：
 
-- huawei 华为
-- huawei-v2 华为新版
+- huawei-v2 华为新版(推荐)
 - xiaomi 小米
 - meizu 魅族
 - oppo Oppo
 - vivo Vivo
-- ios 苹果(基于推送证书认证)
-- ios-token 苹果(基于token认证)
+- ios-token 苹果(基于token认证，推荐)
 - jiguang 极光
 
 ## 设备token
@@ -184,7 +182,6 @@ $message = [
 |参数|类型|说明
 |:---:|:---:|:---:|
 | token | string | 认证token |
-| push | Apns\Client | iOS证书推送实例，考虑到文件I/O问题，故此设计 |
 
 
 ## 标题等长度限制说明
@@ -201,15 +198,15 @@ $message = [
 
 
 ## 角标说明
-目前仅华为、华为新版、ios、ios-token通道支持角标。其中华为新版支持角标累加，格式为`+1`，其他通道将只取数字值。
+目前仅华为新版、ios-token通道支持角标。其中华为新版支持角标累加，格式为`+1`，其他通道将只取数字值。
 
 ---
 
 ## 推送
 ```php
 
-// 华为推送
-$push->setPusher('huawei');
+// 华为v2推送
+$push->setPusher('huawei-v2');
 print $push->pushNotice(
     '0864113036098917300002377300CN01',
     $message,
@@ -255,27 +252,7 @@ print $push->pushNotice(
     $message
 );
 
-// 苹果基于证书推送
-$push->setPusher('ios');
-
-$isSandBox = true;
-$certPath = '/cert/path';
-$password = 'cert_pwd';
-$apnsPush = new \Apns\Client([$certPath, $password], $isSandBox);
-$options = [
-    'push' => $apnsPush
-];
-
-print $push->pushNotice(
-    [
-        '7438f5ba512cba4dcd1613e530a960cb862bd1c7ca70eae3cfe73137583c3c0d',
-        '720772a4df1938b14d2b732ee62ce4e157577f8453d6021f81156aaeca7032ae',
-    ],
-    $message,
-    $options
-);
-
-// 苹果基于token推送
+// 苹果基于token推送(推荐)
 $push->setPusher('ios-token');
 print $push->pushNotice(
     [
@@ -316,7 +293,7 @@ print $push->pushNotice(
 
 ## 推送角标
 
-目前仅`ios` `ios-token` `华为` `华为新版`支持推送角标
+目前仅`ios-token` `华为新版`支持推送角标
 
 其中`华为新版`支持角标累加，`badge`格式为`+ 5`
 
@@ -477,7 +454,7 @@ OPPO推送现已支持国际推送功能，可以自动根据设备的Registrati
 iOS推送现已优化支持最新的APNs协议，提供按regId/token推送和回调解析功能，支持完整的推送状态追踪。
 
 **主要特性：**
-- 双重认证方式：支持JWT token认证和推送证书认证
+- JWT token认证：基于最新的token认证方式，更安全可靠
 - HTTP/2协议：使用最新的HTTP/2协议，性能更优
 - regId推送：支持单个和批量设备token推送
 - LiveKit支持：支持LiveCommunicationKit实时通信消息
@@ -496,7 +473,7 @@ iOS推送现已优化支持最新的APNs协议，提供按regId/token推送和�
 
 ## 注意
 - 各厂商设备token长度不一致，目前识别出华为最长为130个字符
-- 如果项目中使用了`firebase/php-jwt`，需要将此库移除。由于此库不支持ios-token要求的`ES256`算法，故从其PR中拉取出一个新的库`yunchuang/php-jwt`，对应官方的`5.0.0`版本，用法与官方一致
+- 已将`gepo/apns-http2`替换为`edamov/pushok`，并移除了`firebase/php-jwt`依赖。新的pushok库内置JWT支持，性能更优，支持最新的APNs特性
 - ios-token推送要求支持HTTP/2协议，另见 [参照](/docs/ios_token_http_2.md)
 - [iOS两种推送形式比较](/docs/ios_push_compare.md)
 - 对于非明源云移动应用，若有`extra`参数的使用场景，请与原生开发人员确认**Intent对应的schema**信息，具体代码为`src/Gateways/Gateway.php L110`
