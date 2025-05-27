@@ -12,6 +12,7 @@ use BetterUs\Push\AbstractMessage;
 use BetterUs\Push\Exceptions\InvalidArgumentException;
 use BetterUs\Push\Exceptions\GatewayErrorException;
 use BetterUs\Push\Support\ArrayHelper;
+use Pushok\Response;
 
 class IosTokenGateway extends Gateway
 {
@@ -65,7 +66,7 @@ class IosTokenGateway extends Gateway
             $authProvider = $this->createAuthProvider();
 
             // 创建客户端
-            $client = new Client($authProvider, !$this->config->get('isSandBox', false));
+            $client = new Client($authProvider, !($message->gatewayOptions[self::GATEWAY_NAME]['isSandBox'] ?? !$this->config->get('isSandBox', false)));
 
             // 创建通知
             foreach ($to as $deviceToken) {
@@ -112,12 +113,7 @@ class IosTokenGateway extends Gateway
         // 创建payload
         $payload = $this->createPushokPayload($message);
 
-        // 设置推送类型
-        if ($this->isLiveKitMessage($message)) {
-            $payload->setPushType('voip');
-        } else {
-            $payload->setPushType('alert');
-        }
+        $payload->setPushType('alert');
 
         // 创建通知
         $notification = new Notification($payload, $deviceToken);
@@ -152,7 +148,7 @@ class IosTokenGateway extends Gateway
         $errors = [];
 
         foreach ($responses as $response) {
-            if (!$response->isSuccessful()) {
+            if (Response::APNS_SUCCESS != $response->getStatusCode()) {
                 $errors[$response->getDeviceToken()] = $response->getErrorReason();
             }
 
@@ -165,7 +161,7 @@ class IosTokenGateway extends Gateway
                     'timestamp' => time()
                 ];
 
-                if (!$response->isSuccessful()) {
+                if (Response::APNS_SUCCESS != $response->getStatusCode()) {
                     $callbackData['reason'] = $response->getErrorReason();
                 }
 
@@ -189,9 +185,9 @@ class IosTokenGateway extends Gateway
         // 检查extra中是否包含LiveKit相关字段
         if ($message->extra && is_array($message->extra)) {
             return isset($message->extra['livekit']) ||
-                   isset($message->extra['call_type']) ||
-                   isset($message->extra['room_name']) ||
-                   isset($message->extra['caller_id']);
+                isset($message->extra['call_type']) ||
+                isset($message->extra['room_name']) ||
+                isset($message->extra['caller_id']);
         }
 
         // 检查gatewayOptions中是否指定了LiveKit
