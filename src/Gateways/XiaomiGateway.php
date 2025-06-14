@@ -34,11 +34,12 @@ class XiaomiGateway extends Gateway
         $data = [
             'payload' => urlencode($message->content),
             'restricted_package_name' => $this->config->get('appPkgName'),
-            'pass_through' => 0,
             'title' => $message->title,
             'description' => $message->content,
             'extra.notify_effect' => '2',
-            'extra.intent_uri' => $this->generateIntent($this->config->get('appPkgName'), $message->extra),
+            'extra.is_call' => $message->extra['is_call'] ?? 0,
+            'extra.is_video_call' => $message->extra['is_video_call'] ?? 0,
+            'extra.call_params' => json_encode($message->extra['call_params'] ?? null),
             'registration_id' => $this->formatTo($to),
         ];
 

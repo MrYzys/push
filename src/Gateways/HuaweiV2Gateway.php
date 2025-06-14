@@ -49,7 +49,7 @@ class HuaweiV2Gateway extends Gateway
                 'click_action' => [
                     'type' => 1,
                     'intent' => $this->generateIntent($this->config->get('appPkgName'), $message->extra),
-                ]
+                ],
             ]
         ];
 
@@ -73,6 +73,7 @@ class HuaweiV2Gateway extends Gateway
             'message' => [
                 'token' => $this->formatTo($to),
                 'android' => $androidConfig,
+                'data' => ['extra' => $message->extra],
             ],
         ];
 
