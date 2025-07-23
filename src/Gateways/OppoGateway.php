@@ -79,7 +79,13 @@ class OppoGateway extends Gateway
             'content' => $message->content,
             'click_action_type' => 5,
             'click_action_url' => $this->generateIntent($this->config->get('appPkgName'), $message->extra),
-            'channel_id' => 'default_notification'
+            'channel_id' => 'default_notification',
+            'off_line' => true,
+            'off_line_ttl' => 86400,
+            'show_start_time' => time(),
+            'show_expire_time' => time() + 86400*2,
+            'notify_level' => 16,
+            'category' => $message->extra['oppo']['category'] ?? 'IM'
         ];
         $message->businessId && $messageData['app_message_id'] = $message->businessId;
         if ($message->callback) {
