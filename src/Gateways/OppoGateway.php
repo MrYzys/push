@@ -85,7 +85,7 @@ class OppoGateway extends Gateway
             'show_start_time' => time(),
             'show_expire_time' => time() + 86400*2,
             'notify_level' => 16,
-            'category' => $message->extra['oppo']['category'] ?? 'IM'
+//            'category' => $message->extra['oppo']['category'] ?? 'IM'
         ];
         $message->businessId && $messageData['app_message_id'] = $message->businessId;
         if ($message->callback) {

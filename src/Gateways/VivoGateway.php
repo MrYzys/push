@@ -87,7 +87,8 @@ class VivoGateway extends Gateway
             'skipContent' => $this->generateIntent($this->config->get('appPkgName'), $message->extra),
             'requestId' => $message->businessId,
             'notifyType' => 4,
-            'category' => $message->extra['vivo']['category'] ?? 'IM'
+            'category' => $message->extra['vivo']['category'] ?? 'IM',
+            'addBadge' => true,
         ];
         // 设置回调地址
         $this->setCallbackUrl($data, $message);
@@ -128,7 +129,8 @@ class VivoGateway extends Gateway
             'skipContent' => $this->generateIntent($this->config->get('appPkgName'), $message->extra),
             'requestId' => $message->businessId,
             'notifyType' => 4,
-            'category' => $message->extra['vivo']['category'] ?? 'IM'
+            'category' => $message->extra['vivo']['category'] ?? 'IM',
+            'addBadge' => true,
         ];
         // 设置回调地址
         $this->setCallbackUrl($data, $message);
