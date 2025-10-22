@@ -79,7 +79,7 @@ class OppoGateway extends Gateway
             'content' => $message->content,
             'click_action_type' => 5,
             'click_action_url' => $this->generateIntent($this->config->get('appPkgName'), $message->extra),
-            'channel_id' => $message->extra['oppo']['channelId'] ?? 'betterus_push',
+            'channel_id' => $message->extra['oppo']['channelId'] ?? 'default',
             'off_line_ttl' => 86400,
             'notify_level' => 16,
             'category' => $message->extra['oppo']['category'] ?? 'IM'
