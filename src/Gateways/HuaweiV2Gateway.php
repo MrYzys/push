@@ -54,7 +54,6 @@ class HuaweiV2Gateway extends Gateway
         ];
 
         // 设置回调地址
-        $this->setCallbackUrl($androidConfig, $message);
         if ($message->badge) {
             if (preg_match('/^\d+$/', $message->badge)) {
                 $androidConfig['notification']['badge'] = [
@@ -73,7 +72,7 @@ class HuaweiV2Gateway extends Gateway
             'message' => [
                 'token' => $this->formatTo($to),
                 'android' => $androidConfig,
-                'data' => ['extra' => $message->extra],
+                'data' => json_encode(['extra' => $message->extra]),
             ],
         ];
 
