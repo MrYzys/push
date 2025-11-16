@@ -175,7 +175,7 @@ class OppoGateway extends Gateway
 
         $data = [
             'message' => json_encode([
-                'target_type' => 2,
+                'target_type' => 1,
                 'target_value' => $to,
                 'notification' => $message
             ]),
